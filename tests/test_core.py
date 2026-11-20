@@ -77,3 +77,15 @@ def test_suggestion_ordering(tmp_path):
     probs = [p for _, p in suggestions]
     assert probs == sorted(probs, reverse=True)
     assert suggestions[0][0] == "convert"
+
+
+def test_milestone_4(capsys, tmp_path):
+    sample = tmp_path / "edu.txt"
+    sample.write_text(
+        "Natural selection drives evolutionary adaptation across generations.",
+        encoding="utf-8",
+    )
+    milestone_4(["expand", "natural selection", "--corpus", str(sample), "--min-len", "2", "--max-len", "8"])
+    out = capsys.readouterr().out.strip()
+    assert out.startswith("Natural selection")
+    assert out.endswith(".")

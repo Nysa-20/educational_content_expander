@@ -229,3 +229,11 @@ def milestone_3(
     """Expand a short input phrase into a complete educational sentence."""
     model = milestone_2(corpus_path=corpus_path, n=n, k=k)
     return model.expand(phrase, seed=seed, min_len=min_len, max_len=max_len)
+
+
+# --- Milestone 4: Develop a simple CLI for text input and expansion output.
+def milestone_4(argv: list[str] | None = None) -> None:
+    """Invoke the CLI entry point."""
+    from app.cli import main
+
+    main(argv)
