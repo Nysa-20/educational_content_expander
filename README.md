@@ -2,6 +2,8 @@
 
 A lightweight, interpretable NLP tool designed for educators and curriculum designers to expand brief notes, lesson plan outlines, and bullet points into complete, well-formed instructional sentences using smoothed n-gram language models.
 
+[![Built with askThili](https://msrit.ask.thili.ai/api/v1/public/projects/d9bt9bqfdy/badge.svg)](https://msrit.ask.thili.ai/b/d9bt9bqfdy)
+
 ---
 
 ## Overview
