@@ -39,7 +39,11 @@ def to_tokens(sentence: str) -> list[str]:
 
 
 def build(sents: list[str], n: int) -> defaultdict[tuple[str, ...], Counter[str]]:
-    """Build n-gram continuation counts: context (n-1 words) -> Counter of next words."""
+    """Build n-gram continuation counts: context (n-1 words) -> Counter of next words.
+
+    For n=1 (unigram baseline), context is the empty tuple ().
+    For n>=2, context is the preceding n-1 tokens padded with <s> start symbols.
+    """
     if n < 1:
         raise ValueError("n must be at least 1")
     foll: defaultdict[tuple[str, ...], Counter[str]] = defaultdict(Counter)
@@ -194,6 +198,55 @@ class NgramLM:
         if total_steps == 0:
             raise ValueError("Cannot compute perplexity on empty text.")
         return math.exp(-log_sum / total_steps)
+
+
+def evaluate_model_and_baselines(
+    text: str,
+    n: int = 2,
+    k: float = 0.5,
+    train_ratio: float = 0.8,
+    seed: int = 0,
+) -> dict:
+    """Split text into train/test and evaluate uniform baseline, unigram baseline, and n-gram model."""
+    sents = to_sentences(text)
+    if len(sents) < 2:
+        raise ValueError("At least 2 sentences required to evaluate train/test splits.")
+
+    rng = random.Random(seed)
+    shuffled = list(sents)
+    rng.shuffle(shuffled)
+    cut = max(1, int(train_ratio * len(shuffled)))
+    train_text = ". ".join(shuffled[:cut]) + "."
+    test_text = ". ".join(shuffled[cut:]) + "."
+
+    train_tokens = [t for s in shuffled[:cut] for t in to_tokens(s)]
+    vocab = set(train_tokens) | {"</s>"}
+    uniform_ppl = float(len(vocab))
+
+    unigram_model = NgramLM(n=1, k=k).fit(train_text)
+    unigram_train_ppl = unigram_model.perplexity(train_text)
+    unigram_test_ppl = unigram_model.perplexity(test_text)
+
+    ngram_model = NgramLM(n=n, k=k).fit(train_text)
+    ngram_train_ppl = ngram_model.perplexity(train_text)
+    ngram_test_ppl = ngram_model.perplexity(test_text)
+
+    test_reduction = ((unigram_test_ppl - ngram_test_ppl) / unigram_test_ppl) * 100
+
+    return {
+        "sentences_total": len(sents),
+        "sentences_train": cut,
+        "sentences_test": len(sents) - cut,
+        "vocab_size": len(vocab),
+        "uniform_ppl": uniform_ppl,
+        "unigram_train_ppl": unigram_train_ppl,
+        "unigram_test_ppl": unigram_test_ppl,
+        "ngram_n": n,
+        "ngram_k": k,
+        "ngram_train_ppl": ngram_train_ppl,
+        "ngram_test_ppl": ngram_test_ppl,
+        "held_out_reduction_pct": test_reduction,
+    }
 
 
 # --- Milestone 1: Gather a corpus of educational texts relevant to a subject.
