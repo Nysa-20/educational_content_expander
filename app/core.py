@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import random
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -55,7 +56,7 @@ def build(sents: list[str], n: int) -> defaultdict[tuple[str, ...], Counter[str]
 
 
 class NgramLM:
-    """A smoothed n-gram language model with add-k smoothing and perplexity calculation."""
+    """A smoothed n-gram language model with add-k smoothing, suggestion, expansion, and perplexity."""
 
     def __init__(self, n: int = 3, k: float = 0.5):
         if n < 1:
@@ -86,6 +87,95 @@ class NgramLM:
         c = self.foll.get(ctx_tuple, Counter())
         total = sum(c.values())
         return (c[word.lower()] + self.k) / (total + self.k * len(self.V))
+
+    def _context_from_tokens(self, tokens: list[str]) -> tuple[str, ...]:
+        if self.n == 1:
+            return ()
+        padded = ["<s>"] * (self.n - 1) + tokens
+        return tuple(padded[-(self.n - 1) :])
+
+    def suggest_next(self, text: str, topk: int = 3) -> list[tuple[str, float]]:
+        """Return top-k next-word suggestions with smoothed probabilities."""
+        tokens = to_tokens(text)
+        ctx = self._context_from_tokens(tokens)
+        c = self.foll.get(ctx, Counter())
+
+        # Fall back to shorter context if exact n-gram context is unseen
+        if not c and len(tokens) >= 1 and self.n > 2:
+            fallback_ctx = (tokens[-1],)
+            candidates = Counter()
+            for k_ctx, counts in self.foll.items():
+                if k_ctx[-1:] == fallback_ctx:
+                    candidates.update(counts)
+            c = candidates
+
+        ranked = [
+            (w, round(self.prob(ctx, w), 4))
+            for w, _ in c.most_common()
+            if w != "</s>"
+        ]
+        if ranked:
+            return ranked[:topk]
+
+        # Global unigram fallback from vocabulary if context is completely novel
+        unigram_counts: Counter[str] = Counter()
+        for counts in self.foll.values():
+            unigram_counts.update(counts)
+        fallback = [
+            (w, round(self.prob(ctx, w), 4))
+            for w, _ in unigram_counts.most_common()
+            if w != "</s>"
+        ]
+        return fallback[:topk]
+
+    def expand(
+        self,
+        prefix: str,
+        seed: int = 0,
+        min_len: int = 3,
+        max_len: int = 20,
+    ) -> str:
+        """Expand a short educator phrase into a coherent sentence."""
+        rng = random.Random(seed)
+        seed_tokens = to_tokens(prefix)
+        generated: list[str] = list(seed_tokens)
+        added = 0
+
+        for _ in range(max_len):
+            ctx = self._context_from_tokens(generated)
+            c = self.foll.get(ctx)
+
+            # Backoff to last token if exact context is unseen
+            if not c and generated and self.n > 2:
+                backed_off: Counter[str] = Counter()
+                for k_ctx, counts in self.foll.items():
+                    if k_ctx and k_ctx[-1] == generated[-1]:
+                        backed_off.update(counts)
+                c = backed_off
+
+            if not c:
+                break
+
+            items = list(c.items())
+            if added < min_len:
+                non_end = [(w, cnt) for w, cnt in items if w != "</s>"]
+                if non_end:
+                    items = non_end
+
+            words, weights = zip(*items)
+            nxt = rng.choices(words, weights=weights)[0]
+            if nxt == "</s>":
+                break
+            generated.append(nxt)
+            added += 1
+
+        sentence = " ".join(generated).strip()
+        if not sentence:
+            return ""
+        sentence = sentence[0].upper() + sentence[1:]
+        if not sentence.endswith((".", "!", "?")):
+            sentence += "."
+        return sentence
 
     def perplexity(self, text: str) -> float:
         """Compute cross-entropy perplexity on held-out text."""
@@ -124,3 +214,18 @@ def milestone_2(corpus_path: str | Path | None = None, n: int = 3, k: float = 0.
     """Fit and return a smoothed n-gram language model on the educational corpus."""
     raw = load_corpus(corpus_path)
     return NgramLM(n=n, k=k).fit(raw)
+
+
+# --- Milestone 3: Implement text generation to expand short inputs.
+def milestone_3(
+    phrase: str,
+    corpus_path: str | Path | None = None,
+    n: int = 3,
+    k: float = 0.5,
+    seed: int = 0,
+    min_len: int = 3,
+    max_len: int = 20,
+) -> str:
+    """Expand a short input phrase into a complete educational sentence."""
+    model = milestone_2(corpus_path=corpus_path, n=n, k=k)
+    return model.expand(phrase, seed=seed, min_len=min_len, max_len=max_len)
