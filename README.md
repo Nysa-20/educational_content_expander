@@ -63,6 +63,8 @@ pytest -q
 
 All 13 unit and integration tests pass cleanly in under 0.2 seconds.
 
+![Pytest Test Verification](screenshots/03_test_suite_verification.png)
+
 ---
 
 ## Usage Guide & Examples
@@ -106,6 +108,8 @@ Next-word suggestions for 'cellular respiration':
   - powers          (p=0.0031)
 ```
 
+![CLI Expand & Suggest](screenshots/01_cli_expand_suggest.png)
+
 ### 3. Interactive Sentence Builder (`interactive`)
 
 Construct a customized instructional sentence token by token:
@@ -138,6 +142,8 @@ Choose next word (number, 'c' for custom, 'd' to finish): d
 Final sentence: Cellular respiration breaks down glucose.
 ```
 
+![CLI Interactive Builder](screenshots/04_cli_interactive.png)
+
 ### 4. Quantitative Model Evaluation (`evaluate`)
 
 Evaluate perplexity on an 80/20 train/held-out test split, comparing against both a zero-knowledge uniform baseline and a unigram frequency baseline:
@@ -166,6 +172,8 @@ Train perplexity    (n=2, k=0.5): 145.99
 Held-out perplexity (n=2, k=0.5): 424.62
 ====================================================================
 ```
+
+![CLI Evaluation & Baselines](screenshots/02_cli_evaluate.png)
 
 ---
 
@@ -232,6 +240,11 @@ educational_content_expander/
 │   └── core.py                # Core NgramLM, smoothing, expansion, and baseline evaluation logic
 ├── data/
 │   └── corpus.txt             # Domain educational corpus (biology, physics, chemistry)
+├── screenshots/               # Terminal execution and evaluation screenshots
+│   ├── 01_cli_expand_suggest.png
+│   ├── 02_cli_evaluate.png
+│   ├── 03_test_suite_verification.png
+│   └── 04_cli_interactive.png
 ├── tests/
 │   ├── test_core.py           # Unit tests for Milestones 1–4, smoothing, and baseline comparisons
 │   └── test_smoke.py          # Smoke tests for CLI execution and package imports
